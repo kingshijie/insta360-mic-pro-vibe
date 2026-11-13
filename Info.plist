@@ -5,9 +5,11 @@
     <key>CFBundleIdentifier</key>
     <string>local.mc110.dictation</string>
     <key>CFBundleName</key>
-    <string>Mic Pro 听写</string>
+    <string>Vibe Mic Pro</string>
     <key>CFBundleDisplayName</key>
-    <string>Mic Pro 听写</string>
+    <string>Vibe Mic Pro</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
     <key>CFBundleExecutable</key>
     <string>MC110Dictation</string>
     <key>CFBundlePackageType</key>
@@ -23,6 +25,6 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>连接已配对的 Mic Pro，读取电源键和音频。</string>
+    <string>Connects to your paired Mic Pro to receive button presses and audio.</string>
 </dict>
 </plist>

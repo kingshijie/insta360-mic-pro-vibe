@@ -6,6 +6,7 @@
 static NSString *const enabledKey = @"BridgeEnabled";
 static NSString *const loginSetupKey = @"LoginAgentConfigured";
 static NSString *const doublePressKey = @"ReturnOnDoublePress";
+static NSString *const languageKey = @"AppLanguage";
 static NSString *const loginLabel = @"local.mc110.dictation.login";
 
 static NSURL *loginAgentURL(void) {
@@ -107,6 +108,10 @@ static void openSettings(NSString *page) {
 @property (strong) NSButton *loginToggle;
 @property (strong) NSTextField *loginStatus;
 @property (strong) NSButton *doublePressToggle;
+@property (strong) NSTextField *doublePressHint;
+@property (strong) NSTextField *languageLabel;
+@property (strong) NSPopUpButton *languagePicker;
+@property (strong) NSBundle *translationBundle;
 @property (strong) NSTimer *timer;
 @property (strong) IOBluetoothDevice *mic;
 @property (strong) IOBluetoothRFCOMMChannel *channel;
@@ -122,15 +127,38 @@ static void openSettings(NSString *page) {
 @property NSTimeInterval nextAttempt;
 @property NSTimeInterval connectionDeadline;
 @property NSTimeInterval channelDeadline;
-@property (copy) NSString *detail;
+@property (nonatomic, copy) NSString *detailKey;
+@property (copy) NSString *detailArgument;
 @property (copy) NSString *lastStatus;
 @end
 
 @implementation MenuApp
 
+- (NSString *)localized:(NSString *)english {
+    return [self.translationBundle localizedStringForKey:english value:english table:nil] ?: english;
+}
+
+- (void)loadLanguage {
+    NSString *language = [NSUserDefaults.standardUserDefaults stringForKey:languageKey];
+    NSString *path = [language isEqualToString:@"zh-Hans"]
+        ? [NSBundle.mainBundle pathForResource:@"zh-Hans" ofType:@"lproj"] : nil;
+    self.translationBundle = path ? [NSBundle bundleWithPath:path] : nil;
+}
+
+- (NSString *)localizedDetail {
+    NSString *message = [self localized:self.detailKey];
+    return self.detailArgument ? [NSString stringWithFormat:message, self.detailArgument] : message;
+}
+
+- (void)setDetailKey:(NSString *)key {
+    _detailKey = [key copy];
+    self.detailArgument = nil;
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     NSUserDefaults *prefs = NSUserDefaults.standardUserDefaults;
-    [prefs registerDefaults:@{enabledKey: @YES}];
+    [prefs registerDefaults:@{enabledKey: @YES, doublePressKey: @YES, languageKey: @"en"}];
+    [self loadLanguage];
     self.enabled = [prefs boolForKey:enabledKey];
     self.statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:NSVariableStatusItemLength];
     NSImage *icon = [NSBundle.mainBundle imageForResource:@"MicProStatus"];
@@ -147,7 +175,6 @@ static void openSettings(NSString *page) {
     self.menu.delegate = self;
     self.menu.autoenablesItems = NO;
     self.statusItem.menu = self.menu;
-    [self.statusItem.button setAccessibilityLabel:@"Mic Pro 听写"];
     if (![prefs boolForKey:loginSetupKey]) {
         NSError *error = nil;
         if (setLoginEnabled(YES, &error)) [prefs setBool:YES forKey:loginSetupKey];
@@ -177,7 +204,10 @@ static void openSettings(NSString *page) {
 
 - (BOOL)useInput:(AudioDeviceID)device {
     OSStatus result = setDefaultDevice(kAudioHardwarePropertyDefaultInputDevice, device);
-    if (result) self.detail = [NSString stringWithFormat:@"切换系统麦克风失败（%d）", (int)result];
+    if (result) {
+        self.detailKey = @"Could not switch the system microphone (%@).";
+        self.detailArgument = [NSString stringWithFormat:@"%d", (int)result];
+    }
     return result == noErr;
 }
 
@@ -185,7 +215,7 @@ static void openSettings(NSString *page) {
     AudioDeviceID current = defaultDevice(kAudioHardwarePropertyDefaultInputDevice);
     if (current && current != self.blackHole && !isMic(audioName(current))) return YES;
     if (self.builtInMic) return [self useInput:self.builtInMic];
-    self.detail = @"找不到 Mac 内置麦克风。";
+    self.detailKey = @"Could not find the Mac's built-in microphone.";
     return NO;
 }
 
@@ -196,7 +226,7 @@ static void openSettings(NSString *page) {
     for (NSUInteger i = 0; i < sizeof(outputs) / sizeof(*outputs); i++) {
         if (!isMic(audioName(defaultDevice(outputs[i])))) continue;
         if (self.speakers && !setDefaultDevice(outputs[i], self.speakers)) continue;
-        self.detail = @"无法将系统输出从 Mic Pro 切回扬声器。";
+        self.detailKey = @"Could not switch system audio output from Mic Pro to the speakers.";
         return NO;
     }
     return YES;
@@ -230,9 +260,9 @@ static void openSettings(NSString *page) {
         BOOL audioFresh = self.bridge.lastSerialAudio > 0 && now - self.bridge.lastSerialAudio < 5;
         if (!self.mic.isConnected || self.bridge.finished ||
             (!audioFresh && now > self.channelDeadline)) {
-            self.detail = self.mic.isConnected
-                ? @"未收到串口音频，正在重试。持续无声时请重启 Mic Pro。"
-                : @"蓝牙已断开，正在重连。";
+            self.detailKey = self.mic.isConnected
+                ? @"No audio received. Retrying. Restart Mic Pro if the problem persists."
+                : @"Bluetooth disconnected. Reconnecting…";
             [self closeBridge];
             self.nextAttempt = now + 5;
         } else {
@@ -247,22 +277,19 @@ static void openSettings(NSString *page) {
             self.connecting = YES;
             self.connectionDeadline = now + 8;
             self.nextAttempt = now + 12;
-            self.detail = @"正在连接 Mic Pro。";
+            self.detailKey = @"Connecting to Mic Pro…";
             IOReturn result = [self.mic openConnection:self withPageTimeout:0x2000 authenticationRequired:YES];
             if (result != kIOReturnSuccess && !self.mic.isConnected) {
                 self.connecting = NO;
-                self.detail = @"连接暂未成功。请确认 Mic Pro 已开机并在附近。";
+                self.detailKey = @"Could not connect. Make sure Mic Pro is on and nearby.";
             }
         }
     }
     if (!self.ready) [self restoreBuiltInInput];
-    self.statusItem.button.image = (self.ready ? self.statusIcon : self.idleIcon) ?:
-        [NSImage imageWithSystemSymbolName:(self.ready ? @"mic.fill" : @"mic.slash")
-                  accessibilityDescription:@"Mic Pro 听写"];
-    self.statusItem.button.toolTip = self.ready ? @"Mic Pro 听写已就绪" : @"Mic Pro 听写 · 点击查看状态";
+    [self updateStatusAppearance];
     NSString *status = [NSString stringWithFormat:@"enabled=%d bluetooth=%d connected=%d blackHole=%d accessibility=%d ready=%d input=%@",
         self.enabled, self.bluetoothOn, self.mic.isConnected, self.blackHole != 0, self.accessible, self.ready,
-        audioName(defaultDevice(kAudioHardwarePropertyDefaultInputDevice)) ?: @"无"];
+        audioName(defaultDevice(kAudioHardwarePropertyDefaultInputDevice)) ?: @"none"];
     if (![status isEqualToString:self.lastStatus]) {
         NSLog(@"%@", status);
         self.lastStatus = status;
@@ -270,11 +297,20 @@ static void openSettings(NSString *page) {
     if (self.settings.isVisible) [self updateLoginSettings];
 }
 
+- (void)updateStatusAppearance {
+    NSString *name = [self localized:@"Vibe Mic Pro"];
+    [self.statusItem.button setAccessibilityLabel:name];
+    self.statusItem.button.image = (self.ready ? self.statusIcon : self.idleIcon) ?:
+        [NSImage imageWithSystemSymbolName:(self.ready ? @"mic.fill" : @"mic.slash")
+                  accessibilityDescription:name];
+    self.statusItem.button.toolTip = self.ready ? [self localized:@"Vibe Mic Pro is ready"] : [self localized:@"Vibe Mic Pro · Show status"];
+}
+
 - (void)connectionComplete:(IOBluetoothDevice *)device status:(IOReturn)status {
     if (![device.addressString isEqualToString:self.mic.addressString]) return;
     self.connecting = NO;
     if (device.isConnected) self.nextAttempt = 0;
-    else self.detail = @"连接暂未成功。请确认 Mic Pro 已开机并在附近。";
+    else self.detailKey = @"Could not connect. Make sure Mic Pro is on and nearby.";
     [self refresh];
 }
 
@@ -286,19 +322,20 @@ static void openSettings(NSString *page) {
     NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
     self.nextAttempt = now + 5;
     if (!bridge.serialAudio || ![bridge.serialAudio openLoopback]) {
-        self.detail = @"BlackHole 已安装，但无法打开音频输出。";
+        self.detailKey = @"BlackHole is installed, but its audio output could not be opened.";
         return;
     }
     IOBluetoothRFCOMMChannel *channel = nil;
     IOReturn result = [self.mic openRFCOMMChannelAsync:&channel withChannelID:serialChannel delegate:bridge];
     if (result != kIOReturnSuccess || !channel) {
-        self.detail = [NSString stringWithFormat:@"无法打开 Mic Pro 音频通道（0x%x）。", result];
+        self.detailKey = @"Could not open the Mic Pro audio channel (%@).";
+        self.detailArgument = [NSString stringWithFormat:@"0x%x", result];
         return;
     }
     self.bridge = bridge;
     self.channel = channel;
     self.channelDeadline = now + 9;
-    self.detail = @"正在等待 Mic Pro 音频。";
+    self.detailKey = @"Waiting for Mic Pro audio…";
 }
 
 - (void)addItem:(NSString *)title action:(SEL)action {
@@ -311,29 +348,29 @@ static void openSettings(NSString *page) {
 - (void)menuNeedsUpdate:(NSMenu *)menu {
     [self refresh];
     [menu removeAllItems];
-    [self addItem:self.ready ? @"Mic Pro 听写 · 已就绪" : @"Mic Pro 听写 · 未就绪" action:NULL];
+    [self addItem:self.ready ? [self localized:@"Vibe Mic Pro · Ready"] : [self localized:@"Vibe Mic Pro · Not ready"] action:NULL];
     [menu addItem:NSMenuItem.separatorItem];
-    NSString *bluetooth = !self.bluetoothOn ? @"蓝牙 · 启用" :
-        self.mic.isConnected ? @"Mic Pro · 已连接" :
-        self.connecting ? @"Mic Pro · 正在连接" :
-        self.mic ? @"Mic Pro · 连接" : @"Mic Pro · 前往配对";
+    NSString *bluetooth = !self.bluetoothOn ? [self localized:@"Bluetooth · Turn On"] :
+        self.mic.isConnected ? [self localized:@"Mic Pro · Connected"] :
+        self.connecting ? [self localized:@"Mic Pro · Connecting"] :
+        self.mic ? [self localized:@"Mic Pro · Connect"] : [self localized:@"Mic Pro · Pair in System Settings"];
     [self addItem:bluetooth action:self.bluetoothOn && self.mic.isConnected ? NULL : @selector(connectMic:)];
-    [self addItem:self.blackHole ? @"BlackHole 2ch · 已安装" : @"BlackHole 2ch · 安装"
+    [self addItem:self.blackHole ? [self localized:@"BlackHole 2ch · Installed"] : [self localized:@"BlackHole 2ch · Install"]
             action:self.blackHole ? NULL : @selector(installBlackHole:)];
-    [self addItem:self.accessible ? @"辅助功能 · 已启用" : @"辅助功能 · 启用"
+    [self addItem:self.accessible ? [self localized:@"Accessibility · Allowed"] : [self localized:@"Accessibility · Allow"]
             action:self.accessible ? NULL : @selector(enableAccessibility:)];
-    NSString *input = self.ready ? @"Mic Pro（经 BlackHole）" : audioName(defaultDevice(kAudioHardwarePropertyDefaultInputDevice));
-    [self addItem:[@"当前输入 · " stringByAppendingString:input ?: @"无"] action:NULL];
-    [self addItem:@"豆包设置 · 右 Option 免按 / 自动检测" action:@selector(openDoubao:)];
-    if (!self.ready && self.detail.length && self.enabled && self.blackHole && self.accessible && self.mic) {
-        [self addItem:self.detail action:NULL];
+    NSString *input = self.ready ? [self localized:@"Mic Pro (via BlackHole)"] : audioName(defaultDevice(kAudioHardwarePropertyDefaultInputDevice));
+    [self addItem:[NSString stringWithFormat:[self localized:@"Current input · %@"], input ?: [self localized:@"None"]] action:NULL];
+    [self addItem:[self localized:@"Doubao Settings · Right Option / Automatic microphone"] action:@selector(openDoubao:)];
+    if (!self.ready && self.detailKey.length && self.enabled && self.blackHole && self.accessible && self.mic) {
+        [self addItem:[self localizedDetail] action:NULL];
     }
     [menu addItem:NSMenuItem.separatorItem];
-    [self addItem:!self.enabled ? @"启用听写" : self.ready ? @"暂停听写" : @"重新检查并连接"
+    [self addItem:!self.enabled ? [self localized:@"Enable Dictation"] : self.ready ? [self localized:@"Pause Dictation"] : [self localized:@"Check and Reconnect"]
             action:self.ready ? @selector(pause:) : @selector(enable:)];
-    if (self.enabled && !self.ready) [self addItem:@"暂停自动连接" action:@selector(pause:)];
-    [self addItem:@"设置…" action:@selector(showSettings:)];
-    [self addItem:@"退出" action:@selector(quit:)];
+    if (self.enabled && !self.ready) [self addItem:[self localized:@"Pause Auto-Connect"] action:@selector(pause:)];
+    [self addItem:[self localized:@"Settings…"] action:@selector(showSettings:)];
+    [self addItem:[self localized:@"Quit"] action:@selector(quit:)];
 }
 
 - (void)enable:(id)sender {
@@ -380,29 +417,41 @@ static void openSettings(NSString *page) {
     [NSWorkspace.sharedWorkspace openApplicationAtURL:url configuration:NSWorkspaceOpenConfiguration.configuration
                                    completionHandler:^(__unused NSRunningApplication *app, NSError *error) {
         if (error) dispatch_async(dispatch_get_main_queue(), ^{
-            [self showError:error.localizedDescription];
+            NSLog(@"Doubao settings: %@", error);
+            [self showError:[self localized:@"Could not open Doubao Input Method settings."]];
         });
     }];
 }
 
 - (void)showSettings:(id)sender {
     if (!self.settings) {
-        self.settings = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 420, 172)
+        self.settings = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 440, 220)
             styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
             backing:NSBackingStoreBuffered defer:NO];
         self.settings.releasedWhenClosed = NO;
-        self.settings.title = @"Mic Pro 听写设置";
-        self.loginToggle = [NSButton checkboxWithTitle:@"登录后自动启动" target:self action:@selector(toggleLogin:)];
+        self.languageLabel = [NSTextField labelWithString:@""];
+        self.languagePicker = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+        [self.languagePicker addItemsWithTitles:@[@"English", @"简体中文"]];
+        [self.languagePicker itemAtIndex:0].representedObject = @"en";
+        [self.languagePicker itemAtIndex:1].representedObject = @"zh-Hans";
+        self.languagePicker.target = self;
+        self.languagePicker.action = @selector(changeLanguage:);
+        [self.languagePicker selectItemAtIndex:self.translationBundle ? 1 : 0];
+        NSStackView *languageRow = [NSStackView stackViewWithViews:@[self.languageLabel, self.languagePicker]];
+        languageRow.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+        languageRow.alignment = NSLayoutAttributeCenterY;
+
+        self.loginToggle = [NSButton checkboxWithTitle:@"" target:self action:@selector(toggleLogin:)];
         self.loginStatus = [NSTextField wrappingLabelWithString:@""];
         self.loginStatus.textColor = NSColor.secondaryLabelColor;
-        self.doublePressToggle = [NSButton checkboxWithTitle:@"结束听写后双击电源键发送 Return"
+        self.doublePressToggle = [NSButton checkboxWithTitle:@""
                                                       target:self action:@selector(toggleDoublePress:)];
         self.doublePressToggle.state = [NSUserDefaults.standardUserDefaults boolForKey:doublePressKey]
             ? NSControlStateValueOn : NSControlStateValueOff;
-        NSTextField *doublePressHint = [NSTextField wrappingLabelWithString:@"等文字出现在输入框后再双击。双击也会切换麦克风的降噪。"];
-        doublePressHint.textColor = NSColor.secondaryLabelColor;
-        NSStackView *stack = [NSStackView stackViewWithViews:@[self.loginToggle, self.loginStatus,
-                                                             self.doublePressToggle, doublePressHint]];
+        self.doublePressHint = [NSTextField wrappingLabelWithString:@""];
+        self.doublePressHint.textColor = NSColor.secondaryLabelColor;
+        NSStackView *stack = [NSStackView stackViewWithViews:@[languageRow, self.loginToggle, self.loginStatus,
+                                                             self.doublePressToggle, self.doublePressHint]];
         stack.orientation = NSUserInterfaceLayoutOrientationVertical;
         stack.alignment = NSLayoutAttributeLeading;
         stack.spacing = 9;
@@ -413,26 +462,53 @@ static void openSettings(NSString *page) {
             [stack.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:22],
             [stack.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-22],
             [stack.topAnchor constraintEqualToAnchor:content.topAnchor constant:22],
+            [self.loginStatus.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
+            [self.doublePressHint.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
         ]];
         [self.settings center];
     }
-    [self updateLoginSettings];
+    [self updateSettingsLanguage];
     [NSApp activateIgnoringOtherApps:YES];
     [self.settings makeKeyAndOrderFront:nil];
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)flag {
+    [self showSettings:nil];
+    return NO;
+}
+
+- (void)updateSettingsLanguage {
+    self.settings.title = [self localized:@"Vibe Mic Pro Settings"];
+    self.languageLabel.stringValue = [self localized:@"Language"];
+    [self.languagePicker setAccessibilityLabel:self.languageLabel.stringValue];
+    self.loginToggle.title = [self localized:@"Launch at Login"];
+    self.doublePressToggle.title = [self localized:@"Double-press the power button to send Return"];
+    self.doublePressHint.stringValue = [self localized:@"Wait for the text before double-pressing. This also toggles noise reduction."];
+    [self updateLoginSettings];
+}
+
+- (void)changeLanguage:(NSPopUpButton *)sender {
+    [NSUserDefaults.standardUserDefaults setObject:sender.selectedItem.representedObject forKey:languageKey];
+    [self loadLanguage];
+    [self updateSettingsLanguage];
+    [self updateStatusAppearance];
 }
 
 - (void)updateLoginSettings {
     BOOL enabled = [NSFileManager.defaultManager fileExistsAtPath:loginAgentURL().path];
     self.loginToggle.state = enabled ? NSControlStateValueOn : NSControlStateValueOff;
-    self.loginStatus.stringValue = enabled ? @"登录 macOS 后启动，并在 Mic Pro 开机时自动连接。"
-        : @"你仍可从「应用程序」打开 Mic Pro 听写。";
+    self.loginStatus.stringValue = enabled ? [self localized:@"Starts when you log in and connects when Mic Pro is on."]
+        : [self localized:@"Open Vibe Mic Pro from Applications when needed."];
 }
 
 - (void)toggleLogin:(NSButton *)sender {
     NSError *error = nil;
     BOOL changed = setLoginEnabled(sender.state == NSControlStateValueOn, &error);
     [self updateLoginSettings];
-    if (!changed) [self showError:error.localizedDescription ?: @"无法更新登录自启动。"];
+    if (!changed) {
+        NSLog(@"Login item: %@", error);
+        [self showError:[self localized:@"Could not update the login setting."]];
+    }
 }
 
 - (void)toggleDoublePress:(NSButton *)sender {
@@ -443,8 +519,9 @@ static void openSettings(NSString *page) {
 
 - (void)showError:(NSString *)message {
     NSAlert *alert = [NSAlert new];
-    alert.messageText = @"Mic Pro 听写";
+    alert.messageText = [self localized:@"Vibe Mic Pro"];
     alert.informativeText = message;
+    [alert addButtonWithTitle:[self localized:@"OK"]];
     [alert runModal];
 }
 

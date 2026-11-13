@@ -38,6 +38,7 @@ trap 'rm -rf "$bundle"' EXIT
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp "$project/Info.plist" "$bundle/Contents/Info.plist"
 cp "$project/assets/MicPro.icns" "$project/assets/MicProStatus.png" "$bundle/Contents/Resources/"
+cp -R "$project/localizations/zh-Hans.lproj" "$bundle/Contents/Resources/"
 cp "$project/LICENSE" "$bundle/Contents/Resources/LICENSE-MicPro.txt"
 cp "$decoder/LICENSE" "$bundle/Contents/Resources/LICENSE-liblc3.txt"
 for cpu in arm64 x86_64; do
