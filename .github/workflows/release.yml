@@ -43,15 +43,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          将 Insta360 Mic Pro 的电源键映射为豆包输入法的听写键。短按一次开始，再按一次结束，说话时无需长按键盘。
+
           从下方 Assets 下载 **MicPro-Doubao-macOS-universal.zip**，解压后把 App 拖进「应用程序」。支持 Apple 芯片和 Intel Mac（macOS 13 或更新版本）。
 
           首次使用需要安装豆包输入法和 BlackHole 2ch，配对 Mic Pro，并为 App 开启辅助功能。豆包的免按模式设为右 ⌥，麦克风设为自动检测。
 
           此版本未经过 Apple 公证。如果 macOS 拦截，可在「系统设置 → 隐私与安全性」针对该 App 选择「仍要打开」。
 
-          [安装与排障教程](https://github.com/kingshijie/mc110-doubao#安装)
+          [安装与排障教程]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY#安装)
           EOF
-          gh release create "$RELEASE_TAG" --verify-tag --title "Mic Pro 听写 $RELEASE_TAG" \
+          gh release create "$RELEASE_TAG" --verify-tag --title "Vibe Mic Pro $RELEASE_TAG" \
             --notes-file "$RUNNER_TEMP/release-notes.md" \
             build/MicPro-Doubao-macOS-universal.zip build/SHA256SUMS.txt

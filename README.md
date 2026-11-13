@@ -1,10 +1,14 @@
-# Mic Pro 听写
+# Vibe Mic Pro
 
-<img src="assets/MicPro.png" alt="Mic Pro 听写图标" width="96">
+<img src="assets/MicPro.png" alt="Vibe Mic Pro 图标" width="96">
 
-在 macOS 上，用 Insta360 Mic Pro（MC110）发射器的电源键控制豆包输入法。短按一次开始听写，再短按一次结束。关机或断开后，豆包跟随系统切回 Mac 内置麦克风。
+**把 Insta360 Mic Pro 的电源键变成豆包输入法的听写键。短按一次开始，再按一次结束，说话时不用一直按住键盘。**
 
-这是一个个人开发的菜单栏 App。安装后从「应用程序」打开，日常使用无需开着终端。
+Map the Insta360 Mic Pro (MC110) power button to Doubao voice typing on macOS. Tap to start dictation, tap again to stop.
+
+这个独立开发的 macOS 菜单栏 App 将发射器的电源键映射为右 Option（右 ⌥），触发豆包的「免按模式」。说话时可以松开按钮。Mic Pro 关机或断开后，豆包跟随系统切回 Mac 内置麦克风或你选中的其他输入设备。
+
+[下载 macOS App](https://github.com/kingshijie/insta360-mic-pro-vibe/releases/latest) · [查看安装步骤](#安装)
 
 ## 准备
 
@@ -14,7 +18,7 @@
 
 ## 安装
 
-1. 从 [GitHub Releases](https://github.com/kingshijie/mc110-doubao/releases/latest) 的 Assets 下载 **`MicPro-Doubao-macOS-universal.zip`**。解压后，把 **Mic Pro 听写.app** 拖进「应用程序」并打开。安装包同时支持 Apple 芯片和 Intel Mac，无需编译。
+1. 从 [GitHub Releases](https://github.com/kingshijie/insta360-mic-pro-vibe/releases/latest) 的 Assets 下载 **`MicPro-Doubao-macOS-universal.zip`**。解压后，把 **Mic Pro 听写.app** 拖进「应用程序」并打开。安装包同时支持 Apple 芯片和 Intel Mac，无需编译。
 2. 如果 macOS 提示无法验证开发者，先关闭提示，再打开「系统设置 → 隐私与安全性」，针对 **Mic Pro 听写** 选择「仍要打开」。此版本未经过 Apple 公证。[Apple 首次打开说明](https://support.apple.com/zh-cn/102445)
 3. 在「系统设置 → 隐私与安全性 → 辅助功能」开启 **Mic Pro 听写**。如果列表里没有，用 **+** 添加刚才解压的 App。如果 macOS 提示蓝牙权限，允许后再连接发射器。
 4. 打开「豆包输入法设置 → 语音输入」，将 **免按模式** 设为 **右 Option（右 ⌥）**，将 **麦克风选择** 设为 **自动检测**。如需在其他输入法下触发，在同一页启用「全局唤起语音」。
@@ -25,8 +29,8 @@
 2. 下载源码、构建并打开 App。首次构建需要联网下载指定版本的 liblc3。
 
    ```sh
-   git clone https://github.com/kingshijie/mc110-doubao.git
-   cd mc110-doubao
+   git clone https://github.com/kingshijie/insta360-mic-pro-vibe.git
+   cd insta360-mic-pro-vibe
    ./build.zsh
    open "$HOME/Applications/Mic Pro 听写.app"
    ```
