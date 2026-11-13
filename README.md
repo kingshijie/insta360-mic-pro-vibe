@@ -1,69 +1,70 @@
 # Vibe Mic Pro
 
-<img src="assets/MicPro.png" alt="Vibe Mic Pro 图标" width="96">
+**English** · [简体中文](README.zh-CN.md)
 
-**把 Insta360 Mic Pro 的电源键变成豆包输入法的听写键。短按一次开始，再按一次结束，说话时不用一直按住键盘。**
+<img src="assets/MicPro.png" alt="Vibe Mic Pro icon" width="96">
 
-Map the Insta360 Mic Pro (MC110) power button to Doubao voice typing on macOS. Tap to start dictation, tap again to stop.
+**Turn the Insta360 Mic Pro power button into a dictation shortcut. Tap once to start, tap again to stop, and speak with your hands off the keyboard.**
 
-这个独立开发的 macOS 菜单栏 App 将发射器的电源键映射为右 Option（右 ⌥），触发豆包的「免按模式」。说话时可以松开按钮。Mic Pro 关机或断开后，豆包跟随系统切回 Mac 内置麦克风或你选中的其他输入设备。
+Vibe Mic Pro is an independent macOS menu bar app for the Insta360 Mic Pro (MC110) transmitter. It maps a short press of the power button to Right Option (⌥), which triggers hands-free dictation in Doubao Input Method. When the transmitter turns off or disconnects, Doubao follows the system input back to the Mac's built-in microphone or another selected input device.
 
-[下载 macOS App](https://github.com/kingshijie/insta360-mic-pro-vibe/releases/latest) · [查看安装步骤](#安装)
+[Download for macOS](https://github.com/kingshijie/insta360-mic-pro-vibe/releases/latest) · [Installation guide](#installation)
 
-## 准备
+## Requirements
 
-- macOS 13 或更新版本，已在 Apple 芯片的 MacBook Pro（macOS 14.7.8）上实测。其他机型和系统版本尚未验证。
-- Insta360 Mic Pro 发射器，通过 Mac 蓝牙直接配对。配对列表里显示为 `Insta360 Mic Pro TX …`。
-- [豆包输入法 macOS 版](https://ime.doubao.com/pc) 和 [BlackHole 2ch](https://existential.audio/blackhole/)。BlackHole 安装后若提示重启，按安装器提示操作。
+- macOS 13 or later. Tested on an Apple silicon MacBook Pro running macOS 14.7.8. Other Mac models and macOS versions have not been tested.
+- An Insta360 Mic Pro transmitter paired directly with the Mac over Bluetooth. Look for a device named `Insta360 Mic Pro TX …`.
+- [Doubao Input Method for macOS](https://ime.doubao.com/pc) and [BlackHole 2ch](https://existential.audio/blackhole/). Restart if the BlackHole installer asks you to.
 
-## 安装
+## Installation
 
-1. 从 [GitHub Releases](https://github.com/kingshijie/insta360-mic-pro-vibe/releases/latest) 的 Assets 下载 **`MicPro-Doubao-macOS-universal.zip`**。解压后，把 **Mic Pro 听写.app** 拖进「应用程序」并打开。安装包同时支持 Apple 芯片和 Intel Mac，无需编译。
-2. 如果 macOS 提示无法验证开发者，先关闭提示，再打开「系统设置 → 隐私与安全性」，针对 **Mic Pro 听写** 选择「仍要打开」。此版本未经过 Apple 公证。[Apple 首次打开说明](https://support.apple.com/zh-cn/102445)
-3. 在「系统设置 → 隐私与安全性 → 辅助功能」开启 **Mic Pro 听写**。如果列表里没有，用 **+** 添加刚才解压的 App。如果 macOS 提示蓝牙权限，允许后再连接发射器。
-4. 打开「豆包输入法设置 → 语音输入」，将 **免按模式** 设为 **右 Option（右 ⌥）**，将 **麦克风选择** 设为 **自动检测**。如需在其他输入法下触发，在同一页启用「全局唤起语音」。
+1. Under **Assets** on the [latest release](https://github.com/kingshijie/insta360-mic-pro-vibe/releases/latest), download **`MicPro-Doubao-macOS-universal.zip`**. Unzip it, drag the extracted app into Applications, and open it. The ZIP contains a prebuilt app for Apple silicon and Intel Macs.
+2. The app is not notarized by Apple. If macOS blocks it because it cannot verify the developer, dismiss the alert, then go to **System Settings → Privacy & Security** and select **Open Anyway** for this app. [Apple's instructions](https://support.apple.com/en-us/102445)
+3. Under **System Settings → Privacy & Security → Accessibility**, enable the extracted app. If it is missing, use **+** to add it from Applications. Allow Bluetooth access if prompted.
+4. In Doubao Input Method's voice input settings, set the hands-free shortcut to **Right Option (⌥)** and the microphone to **Automatic**. To trigger dictation while another input method is active, enable the global voice input option.
 
-### 从源码构建
+The v1.0.0 app and Doubao settings may show Chinese labels. The [Chinese setup guide](README.zh-CN.md#安装) lists the labels as they appear on screen.
 
-1. 在终端运行 `xcode-select --install`，安装 Xcode 命令行工具。已安装可跳过。
-2. 下载源码、构建并打开 App。首次构建需要联网下载指定版本的 liblc3。
+### Build from source
+
+1. Install the Xcode Command Line Tools with `xcode-select --install` if they are not already installed.
+2. Clone and build. The first build downloads the pinned version of liblc3.
 
    ```sh
    git clone https://github.com/kingshijie/insta360-mic-pro-vibe.git
    cd insta360-mic-pro-vibe
    ./build.zsh
-   open "$HOME/Applications/Mic Pro 听写.app"
    ```
 
-3. 按上面的安装步骤配置辅助功能和豆包输入法。
+   The script prints the installed app's path in your user Applications folder. Open the app and follow the Accessibility and Doubao steps above.
 
-## 使用
+## Usage
 
-| 状态 | 豆包使用的音频 | 操作 |
+| State | Doubao input | How to dictate |
 | --- | --- | --- |
-| 菜单显示「已就绪」 | Mic Pro，经 BlackHole 2ch | 光标放进文本框，短按电源键开始，再短按结束 |
-| Mic Pro 关机、断开或桥接暂停 | Mac 内置麦克风，或当前选中的其他麦克风 | 使用豆包自己的语音快捷键，例如按住右 ⌘ |
+| Mic Pro is connected and the app is ready | Mic Pro through BlackHole 2ch | Focus a text field, tap the power button to start, and tap it again to stop. |
+| Mic Pro is off, disconnected, or the bridge is paused | Built-in microphone or another selected input device | Use Doubao's own dictation shortcut, such as holding Right Command if configured. |
 
-第一次打开 App 后默认随 macOS 登录启动，可在菜单栏「设置…」中关闭。菜单也能查看当前输入、暂停听写和重新连接。
+The app runs in the menu bar and starts at login by default. Use its settings to disable login launch. The menu also shows the current input and lets you pause the bridge or reconnect.
 
-BlackHole 是虚拟音频设备。App 将收到的 Mic Pro 音频解码后送进 BlackHole，豆包从系统默认输入读取。App 会在收到有效音频后切换输入，断开时恢复。这个切换对其他跟随系统输入的 App 也生效。
+BlackHole is a virtual audio device. The app decodes the incoming Mic Pro audio locally and sends it to BlackHole. Once audio arrives, the app switches the system input to BlackHole and restores the fallback input on disconnect. This also affects other apps that follow the system's default input.
 
-## 排障
+## Troubleshooting
 
-| 现象 | 怎么处理 |
+| Symptom | What to check |
 | --- | --- |
-| 找不到菜单栏图标 | 确认已从「应用程序」打开 **Mic Pro 听写**。如果 MacBook 的刘海两侧菜单已满，先收起几个菜单栏项目，再找白色圆形的像素笑脸图标。图标变淡表示麦克风尚未就绪。 |
-| 菜单一直未就绪 | 检查蓝牙配对、BlackHole 2ch 和辅助功能授权，点「重新检查并连接」。如果已连接但一直等不到音频，先退出其他正在使用 Mic Pro 的 App，再重启发射器。 |
-| 按键有反应，但豆包没出字 | 先在文本框手动点按右 ⌥，检查豆包能否进入免按模式。确认麦克风选「自动检测」。就绪时应显示 BlackHole 2ch，断开后应显示内置麦克风或当前选中的其他设备。 |
-| 更新后辅助功能开着，电源键却失效 | App 使用临时签名。移除辅助功能列表里的旧条目，重新添加新版 App，退出并重新打开。 |
-| 收音设备没有切回 | 在菜单里退出 App 以恢复内置输入。如果 App 曾被强制结束，可在「系统设置 → 声音 → 输入」手动选回内置麦克风。 |
+| The menu bar icon is missing | Open the app from Applications. If the MacBook menu bar is crowded, free up some space near the notch and look for the white round pixel-art face. A dim icon means the microphone is not ready. |
+| The app stays idle | Check Bluetooth pairing, BlackHole 2ch, and Accessibility access. Retry from the menu. If the transmitter connects without sending audio, quit other apps using it and restart the transmitter. |
+| The power button responds, but Doubao produces no text | Tap Right Option in a text field to check that Doubao enters hands-free mode. Set the microphone to Automatic. It should show BlackHole 2ch when the bridge is ready and the fallback input after disconnecting. |
+| The power button stops working after an update | The app uses an ad hoc signature. Remove the old Accessibility entry, add the updated app, then quit and reopen it. |
+| The system input does not switch back | Quit from the app menu. If the app was force-quit, select the built-in microphone in **System Settings → Sound → Input**. |
 
-升级时，先从菜单退出旧版，再下载新版并替换 App。从源码安装的用户也可以运行 `git pull` 和 `./build.zsh`。只想编译检查，可以运行 `./build.zsh --build-only`，产物会留在项目的 `build/` 目录。
+To upgrade, quit the old app and replace it with the latest download. If you installed from source, run `git pull` and `./build.zsh`. To build without installing, run `./build.zsh --build-only`; the app will be in `build/`.
 
-卸载时，先在菜单「设置…」里关闭登录启动，再退出 App，将 **Mic Pro 听写.app** 移到废纸篓。BlackHole 可能也被其他 App 使用，可按官网说明单独管理。
+To uninstall, disable launch at login in the app settings, quit the app, and move it to the Trash. BlackHole is installed separately and may be used by other apps.
 
-## 实现与许可证
+## Implementation and licenses
 
-`panel.m` 管理菜单、自动连接和系统输入切换。`bridge.m` 通过蓝牙 RFCOMM 通道 12 读取发射器按键和音频，将电源键映射为右 ⌥。`serial-audio.m` 将 48 kHz 单声道 LC3plus 解码后通过 Core Audio 送给 BlackHole。桥接 App 在本机处理音频，听写由豆包输入法完成。
+`panel.m` manages the menu, connections, and system audio input. `bridge.m` reads button events and audio on Bluetooth RFCOMM channel 12 and maps short presses to Right Option. `serial-audio.m` decodes 48 kHz mono LC3plus audio and sends it to BlackHole via Core Audio. The bridge handles audio on your Mac, and Doubao handles speech recognition.
 
-本仓库的项目代码、文档和卡通图标采用 [MIT 许可证](LICENSE)。App 随附 [liblc3 1.1.3（Apache 2.0）](https://github.com/google/liblc3/blob/v1.1.3/LICENSE) 及其许可证。BlackHole 单独安装，适用其 [GPL-3.0 许可证](https://github.com/ExistentialAudio/BlackHole/blob/master/LICENSE)。
+The project code, documentation, and icon are under the [MIT license](LICENSE). The app bundles [liblc3 1.1.3 under Apache 2.0](https://github.com/google/liblc3/blob/v1.1.3/LICENSE). BlackHole is installed separately under the [GPL-3.0 license](https://github.com/ExistentialAudio/BlackHole/blob/master/LICENSE).
