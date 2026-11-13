@@ -2,13 +2,11 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <CoreAudio/CoreAudio.h>
 #import <os/lock.h>
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmacro-redefined"
-#include <lc3plus.h>
-#pragma clang diagnostic pop
+#include <lc3.h>
 
 enum {
     sampleRate = 48000,
+    frameDurationUS = 10000,
     samplesPerFrame = 480,
     samplesPerPacket = 1440,
     queueBufferFrames = 480,
@@ -41,7 +39,8 @@ static CFStringRef copyBlackHoleUID(void) {
 }
 
 @interface SerialAudio () {
-    LC3PLUS_Dec *_decoder;
+    lc3_decoder_mem_48k_t _decoderMemory;
+    lc3_decoder_t _decoder;
     AudioQueueRef _queue;
     AudioQueueBufferRef _buffers[initialBuffers];
     BOOL _started;
@@ -61,17 +60,13 @@ static void refill(void *context, AudioQueueRef queue, AudioQueueBufferRef buffe
 - (instancetype)init {
     if (!(self = [super init])) return nil;
     _lock = OS_UNFAIR_LOCK_INIT;
-    int size = lc3plus_dec_get_size(sampleRate, 1);
-    if (size <= 0) return nil;
-    _decoder = calloc(1, (size_t)size);
-    if (!_decoder || lc3plus_dec_init(_decoder, sampleRate, 1, LC3PLUS_PLC_ADVANCED, 0) != LC3PLUS_OK ||
-        lc3plus_dec_get_output_samples(_decoder) != samplesPerFrame) return nil;
+    _decoder = lc3_setup_decoder(frameDurationUS, sampleRate, 0, &_decoderMemory);
+    if (!_decoder) return nil;
     return self;
 }
 
 - (void)dealloc {
     if (_queue) AudioQueueDispose(_queue, true);
-    free(_decoder);
 }
 
 - (BOOL)openLoopback {
@@ -124,11 +119,8 @@ static void refill(void *context, AudioQueueRef queue, AudioQueueBufferRef buffe
     }
     int16_t pcm[samplesPerPacket];
     for (unsigned i = 0; i < 3; i++) {
-        uint8_t payload[120];
-        memcpy(payload, frame + 26 + i * 128, sizeof(payload));
-        int16_t *decoded = pcm + i * samplesPerFrame;
-        LC3PLUS_Error error = lc3plus_dec16(_decoder, payload, sizeof(payload), &decoded, NULL, 0);
-        if (error != LC3PLUS_OK && error != LC3PLUS_DECODE_ERROR) return NO;
+        const uint8_t *payload = frame + 26 + i * 128;
+        if (lc3_decode(_decoder, payload, 120, LC3_PCM_FORMAT_S16, pcm + i * samplesPerFrame, 1) < 0) return NO;
     }
     if (!_queue) return YES;
     os_unfair_lock_lock(&_lock);

@@ -1,0 +1,48 @@
+name: Publish macOS release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Build and verify universal App
+        shell: bash
+        run: |
+          version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Info.plist)"
+          test "$GITHUB_REF_NAME" = "v$version"
+          ./build.zsh --build-only
+          app="build/Mic Pro 听写.app"
+          codesign --verify --strict "$app"
+          lipo "$app/Contents/MacOS/MC110Dictation" -verify_arch arm64 x86_64
+          ditto -c -k --keepParent "$app" build/MicPro-Doubao-macOS-universal.zip
+          cd build
+          shasum -a 256 MicPro-Doubao-macOS-universal.zip > SHA256SUMS.txt
+
+      - name: Publish download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          从下方 Assets 下载 **MicPro-Doubao-macOS-universal.zip**，解压后把 App 拖进「应用程序」。支持 Apple 芯片和 Intel Mac（macOS 13 或更新版本）。
+
+          首次使用需要安装豆包输入法和 BlackHole 2ch，配对 Mic Pro，并为 App 开启辅助功能。豆包的免按模式设为右 ⌥，麦克风设为自动检测。
+
+          此版本未经过 Apple 公证。如果 macOS 拦截，可在「系统设置 → 隐私与安全性」针对该 App 选择「仍要打开」。
+
+          [安装与排障教程](https://github.com/kingshijie/mc110-doubao#安装)
+          EOF
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
+            build/MicPro-Doubao-macOS-universal.zip build/SHA256SUMS.txt
