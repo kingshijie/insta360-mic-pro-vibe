@@ -23,7 +23,7 @@ Vibe Mic Pro is an independent macOS menu bar app for the Insta360 Mic Pro (MC11
 3. Under **System Settings → Privacy & Security → Accessibility**, enable the extracted app. If it is missing, use **+** to add it from Applications. Allow Bluetooth access if prompted.
 4. In Doubao Input Method's voice input settings, set the hands-free shortcut to **Right Option (⌥)** and the microphone to **Automatic**. To trigger dictation while another input method is active, enable the global voice input option.
 
-The v1.0.0 app and Doubao settings may show Chinese labels. The [Chinese setup guide](README.zh-CN.md#安装) lists the labels as they appear on screen.
+Doubao settings may show Chinese labels. The [Chinese setup guide](README.zh-CN.md#安装) lists the labels as they appear on screen.
 
 ### Build from source
 
@@ -47,9 +47,9 @@ The v1.0.0 app and Doubao settings may show Chinese labels. The [Chinese setup g
 
 The app runs in the menu bar and starts at login by default. Use its settings to disable login launch. The menu also shows the current input and lets you pause the bridge or reconnect.
 
-The current source build starts in English. To switch to Simplified Chinese, open **Settings → Language** and choose **简体中文**. The change applies immediately and is saved for next time. You can also reopen the running app from Finder to bring up Settings.
+Vibe Mic Pro starts in English by default. To switch to Simplified Chinese, open **Settings → Language** and choose **简体中文**. The change applies immediately and is saved for next time. You can also reopen the running app from Finder to bring up Settings.
 
-The current source build enables **Double-press the power button to send Return** by default. You can turn it off in Settings. Tap once to start and once to stop in the same app. Wait for the text to appear, then double-press within 20 seconds of stopping. This also toggles the transmitter's noise reduction. Return submits only in fields configured to send on Return.
+**Double-press the power button to send Return** is enabled by default. You can turn it off in Settings. Tap once to start and once to stop in the same app. Wait for the text to appear, then double-press within 20 seconds of stopping. This also toggles the transmitter's noise reduction. Return submits only in fields configured to send on Return.
 
 BlackHole is a virtual audio device. The app decodes the incoming Mic Pro audio locally and sends it to BlackHole. Once audio arrives, the app switches the system input to BlackHole and restores the fallback input on disconnect. This also affects other apps that follow the system's default input.
 
