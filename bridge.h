@@ -5,7 +5,8 @@
 enum { serialChannel = 12 };
 
 @interface Bridge : NSObject <IOBluetoothRFCOMMChannelDelegate>
-@property BOOL inject;
+@property (nonatomic) BOOL inject;
+@property (nonatomic) BOOL returnOnDoublePress;
 @property BOOL finished;
 @property NSTimeInterval lastSerialAudio;
 @property (strong) NSMutableData *pending;

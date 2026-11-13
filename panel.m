@@ -5,6 +5,7 @@
 
 static NSString *const enabledKey = @"BridgeEnabled";
 static NSString *const loginSetupKey = @"LoginAgentConfigured";
+static NSString *const doublePressKey = @"ReturnOnDoublePress";
 static NSString *const loginLabel = @"local.mc110.dictation.login";
 
 static NSURL *loginAgentURL(void) {
@@ -105,6 +106,7 @@ static void openSettings(NSString *page) {
 @property (strong) NSWindow *settings;
 @property (strong) NSButton *loginToggle;
 @property (strong) NSTextField *loginStatus;
+@property (strong) NSButton *doublePressToggle;
 @property (strong) NSTimer *timer;
 @property (strong) IOBluetoothDevice *mic;
 @property (strong) IOBluetoothRFCOMMChannel *channel;
@@ -165,6 +167,7 @@ static void openSettings(NSString *page) {
 - (void)tick:(NSTimer *)timer { [self refresh]; }
 
 - (void)closeBridge {
+    self.bridge.inject = NO;
     self.channel.delegate = nil;
     [self.channel closeChannel];
     self.channel = nil;
@@ -277,6 +280,7 @@ static void openSettings(NSString *page) {
 
 - (void)startBridge {
     Bridge *bridge = [Bridge new];
+    bridge.returnOnDoublePress = [NSUserDefaults.standardUserDefaults boolForKey:doublePressKey];
     bridge.pending = [NSMutableData data];
     bridge.serialAudio = [SerialAudio new];
     NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
@@ -383,7 +387,7 @@ static void openSettings(NSString *page) {
 
 - (void)showSettings:(id)sender {
     if (!self.settings) {
-        self.settings = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 400, 122)
+        self.settings = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 420, 172)
             styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
             backing:NSBackingStoreBuffered defer:NO];
         self.settings.releasedWhenClosed = NO;
@@ -391,7 +395,14 @@ static void openSettings(NSString *page) {
         self.loginToggle = [NSButton checkboxWithTitle:@"登录后自动启动" target:self action:@selector(toggleLogin:)];
         self.loginStatus = [NSTextField wrappingLabelWithString:@""];
         self.loginStatus.textColor = NSColor.secondaryLabelColor;
-        NSStackView *stack = [NSStackView stackViewWithViews:@[self.loginToggle, self.loginStatus]];
+        self.doublePressToggle = [NSButton checkboxWithTitle:@"结束听写后双击电源键发送 Return"
+                                                      target:self action:@selector(toggleDoublePress:)];
+        self.doublePressToggle.state = [NSUserDefaults.standardUserDefaults boolForKey:doublePressKey]
+            ? NSControlStateValueOn : NSControlStateValueOff;
+        NSTextField *doublePressHint = [NSTextField wrappingLabelWithString:@"等文字出现在输入框后再双击。双击也会切换麦克风的降噪。"];
+        doublePressHint.textColor = NSColor.secondaryLabelColor;
+        NSStackView *stack = [NSStackView stackViewWithViews:@[self.loginToggle, self.loginStatus,
+                                                             self.doublePressToggle, doublePressHint]];
         stack.orientation = NSUserInterfaceLayoutOrientationVertical;
         stack.alignment = NSLayoutAttributeLeading;
         stack.spacing = 9;
@@ -422,6 +433,12 @@ static void openSettings(NSString *page) {
     BOOL changed = setLoginEnabled(sender.state == NSControlStateValueOn, &error);
     [self updateLoginSettings];
     if (!changed) [self showError:error.localizedDescription ?: @"无法更新登录自启动。"];
+}
+
+- (void)toggleDoublePress:(NSButton *)sender {
+    BOOL enabled = sender.state == NSControlStateValueOn;
+    [NSUserDefaults.standardUserDefaults setBool:enabled forKey:doublePressKey];
+    self.bridge.returnOnDoublePress = enabled;
 }
 
 - (void)showError:(NSString *)message {

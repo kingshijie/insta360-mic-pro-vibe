@@ -47,6 +47,8 @@ The v1.0.0 app and Doubao settings may show Chinese labels. The [Chinese setup g
 
 The app runs in the menu bar and starts at login by default. Use its settings to disable login launch. The menu also shows the current input and lets you pause the bridge or reconnect.
 
+Build from source to try the optional **Double-press the power button to send Return** setting. It is off by default. Tap once to start and once to stop in the same app. Wait for the text to appear, then double-press within 20 seconds of stopping. This also toggles the transmitter's noise reduction. Return submits only in fields configured to send on Return.
+
 BlackHole is a virtual audio device. The app decodes the incoming Mic Pro audio locally and sends it to BlackHole. Once audio arrives, the app switches the system input to BlackHole and restores the fallback input on disconnect. This also affects other apps that follow the system's default input.
 
 ## Troubleshooting
